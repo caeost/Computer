@@ -1,3 +1,22 @@
+// Big question is which side of equation should be tracking.
+// If an object tracks what it depends on, it is duplicating the work of
+// the interpreter and its GC, but we can also with a simple walk of the tree
+// know which depends depend on other depends (if you get me) and avoid recomputing
+// of values in some situations. 
+// On the other hand tracking what depends on it makes it very easy to find the
+// total list of dependencies even if the rest of the tree (or forest) is huge
+// this could also help with avoiding memory leaks as the active objects will
+// eventually shed their references (especially for generated values) and the 
+// object will no longer be referenced.
+//
+// Can we figure out how to build the run graph in the second case as if we were
+// in the first case? We could trace the found dependencies to each other,
+// however this removes much efficiency as we might theoretically have to walk
+// all the trees the values are in, in case the parent doesn't depend directly
+// on the child. Perhaps tho if a child is not depended upon directly it could
+// be run, see if it even changes, and continue to run not directly attached
+// dependencies until we either can't anymore or we are done.
+
 // ideas: 
 // 1) keep list of computers that are never "gotten" and clean them up when their dependencies are all gone
 // 2) add robust set (of compilable away) of debugging tools to see ex: size of trees, timing, cyclical re calls

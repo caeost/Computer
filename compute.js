@@ -14,24 +14,21 @@ var Tree = {
 
 // dirty contains the current list of values to be recalculated
 // it is cleaned up after a run through of the tree is done
-var dirty = {};
-
-var running = false;
+var dirty = [];
 
 var done = {};
 
 var ContextStack = [Tree];
 
 function intersection(one, two) {
-  for(var key in one) {
-    if(two[key]) return true;
+  for(var i = 0; i < one.length; i++) {
+    if(two[one[i]]) return true;
   }
   return false;
 }
 
 function walkTree(tree, func) {
   var dependencies = tree.dependencies;
-  done = {};
   for(var id in dependencies) {
     walkTree(dependencies[id], func);
     done[id] = dependencies[id];
@@ -44,9 +41,8 @@ function walkTree(tree, func) {
 // i just realized tho that dependencies are created all the time and 
 // are not globally relevant necessarily THINK BOUT IT
 function runLeaf(tree, dirty) {
-  running = true;
   walkTree(tree, function runIfDirty(state) {
-    if(intersection(dirty, state.dependencies)) {
+    if(intersection(dirty, state.dependencies) && !done[state.id]) {
       console.log('computing id: ' + state.id);
       runCompute(state);
     }
@@ -66,18 +62,18 @@ function set(state, value) {
   var old = state.value;
   state.value = value;
   if(!state.isEqual(old, value)) {
-    dirty[state.id] = true;
-    if(!running) {
+    if(!dirty.length) {
+      dirty.push(state.id);
       console.log('change on id: %s', state.id);
       runLeaf(Tree, dirty);
-      running = false;
-      console.log('changes done for ids: %s', Object.keys(dirty).toString());
-      dirty = {};
+      console.log('changes done for ids: %s', dirty.toString());
+      dirty = [];
+      done = {};
     } else {
+      dirty.push(state.id);
       console.log('sub change on id: %s', state.id);
-      var newDirty = {};
-      newDirty[state.id] = true;
-      runLeaf({dependencies: done}, newDirty);
+      console.log('current done: %s', Object.keys(done).toString());
+      runLeaf({dependencies: done}, [state.id]);
     }
   }
   return value;

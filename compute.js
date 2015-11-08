@@ -1,15 +1,28 @@
 // ideas: 
 // 1) keep list of computers that are never "gotten" and clean them up when their dependencies are all gone
+// 2) add robust set (of compilable away) of debugging tools to see ex: size of trees, timing, cyclical re calls
 
+
+// ID constantly counts up, can potentially be used to know if a value could reference another
 var ID = 0;
 
+// Tree is the root of all rerenders, its essentially a stripped down computer
 var Tree = {
   dependencies: {}
 };
 
+// dirty contains the current list of values to be recalculated
+// it is cleaned up after a run through of the tree is done
 var dirty = {};
 
 var ContextStack = [Tree];
+
+function intersection(one, two) {
+  for(var key in one) {
+    if(two[key]) return true;
+  }
+  return false;
+}
 
 function walkTree(tree, func, sibling) {
   var dependencies = tree.dependencies;
@@ -23,17 +36,10 @@ function walkTree(tree, func, sibling) {
   func(tree);
 }
 
-function intersection(one, two) {
-  for(var key in one) {
-    if(two[key]) return true;
-  }
-  return false;
-}
-
 function runLeaf(tree) {
   var current;
   walkTree(tree, function(state) {
-    if(intersection(dirty, state.dependencies) {
+    if(intersection(dirty, state.dependencies)) {
       current = state;
     }
   }, function(prev) {
@@ -55,12 +61,9 @@ function runCompute(state) {
     ContextStack.push(state);
     state.dependencies = {};
     if(state.compute.length) {
-      var done = function(value) {
-        ContextStack.push(state);
+      function done(value) {
         state.thing(value);
-        ContextStack.pop();
-        runLeaf(Tree);
-      }
+      };
       state.compute(done);
     } else {
       state.thing(state.compute());
@@ -120,8 +123,8 @@ var Computer = function(func) {
 
   that.state = state;
 
-  // TODO make cleanup function
   that.destroy = function() {
+    state.compute = function() {};
     walkTree(Tree, function(state) {
       delete state.dependencies[that.id];
     });
@@ -132,9 +135,6 @@ var Computer = function(func) {
   } else {
     runCompute(state);
   }
-  
-  // hack
-  that();
 
   return that;
 };

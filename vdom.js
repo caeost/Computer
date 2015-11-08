@@ -1,5 +1,3 @@
-var Computer = require('./compute.js');
-
 var dustheap = document.createElement('div');
 
 function extend(target, props) {
@@ -20,7 +18,11 @@ function DOM(type, func) {
 
   var element = computer.element = document.createElement(type);
 
-  Computer(function() {
+  // this pattern of wrapping the function call in another computer turns out
+  // to be very useful.
+  // Until (/ if) it can be cleaned up we need to do the cleanup ourselves and
+  // need to know the name.
+  var DOMComp = Computer(function() {
     var data = Computer();
 
     extend(element, data);
@@ -28,20 +30,28 @@ function DOM(type, func) {
     return data;
   });
 
+  // these are out here because they dont need to be used by the internal 
+  // behavior much and therefore their higher reference cost don't matter
+  // much.
+  // Instead we want a reliable way to reference and delete them.
   var childComputer;
+  var renderChildren;
   computer.children = function(children) {
+    if(childComputer) {
+      childComputer.destroy();
+      renderChildren.destroy();
+    }
+
     childComputer = Computer(children);
 
-    var renderChildren = Computer(function() {
+    renderChildren = Computer(function() {
       var children = childComputer();
-      var offset = 0;
       for(var i = 0; i < children.length; i++) {
-        var existingPos = i - offset;
-        var existingEl = existingPos > -1 ? element.childNodes[existingPos] : null;
+        var existingEl = element.childNodes[i];
         var newEl = children[i].element;
         if(existingEl !== newEl) {
-          offset++;
           if(existingEl) {
+            // this removes from rendered DOM without deleting (check this)
             dustheap.appendChild(existingEl);
           }
           element.appendChild(newEl);
@@ -51,17 +61,16 @@ function DOM(type, func) {
       return children;
     });
 
-    childComputer.renderChildren = renderChildren;
-
     return childComputer;
   };
 
   var oldDestroy = computer.destroy;
   computer.destroy = function() {
-    if(childComputer.renderChildren) {
-      childComputer.renderChildren.destroy();
+    if(childComputer) {
+      childComputer.destroy();
+      renderChildren.destroy();
     }
-    childComputer.destroy();
+    DOMComp.destroy();
     computer.element.
     oldDestroy();
   }

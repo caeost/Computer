@@ -15,6 +15,10 @@ var Tree = {
 // it is cleaned up after a run through of the tree is done
 var dirty = {};
 
+var running = false;
+
+var done = {};
+
 var ContextStack = [Tree];
 
 function intersection(one, two) {
@@ -24,34 +28,25 @@ function intersection(one, two) {
   return false;
 }
 
-function walkTree(tree, func, sibling) {
+function walkTree(tree, func) {
   var dependencies = tree.dependencies;
-  var prev = {};
+  done = {};
   for(var id in dependencies) {
-    var bail = walkTree(dependencies[id], func, sibling);
-    if(bail) return true;
-    if(sibling) sibling(prev);
-    prev[id] = dependencies[id];
+    walkTree(dependencies[id], func);
+    done[id] = dependencies[id];
   }
   func(tree);
 }
 
+// check previous dependencies because earlier things cant reference
+// later things and therefore be changed by things that were added later
+// i just realized tho that dependencies are created all the time and 
+// are not globally relevant necessarily THINK BOUT IT
 function runLeaf(tree) {
-  var current;
-  walkTree(tree, function(state) {
+  running = true;
+  walkTree(tree, function runIfDirty(state) {
     if(intersection(dirty, state.dependencies)) {
-      current = state;
-    }
-  }, function(prev) {
-    // if we rewrite dependencies to be an array we maybe don't need to
-    // check previous dependencies because earlier things cant reference
-    // later things and therefore be changed by things that were added later
-    // i just realized tho that dependencies are created all the time and 
-    // are not globally relevant necessarily THINK BOUT IT
-    runLeaf({dependencies: prev});
-    if(current) {
-      runCompute(current);
-      current = null;
+      runCompute(state);
     }
   });
 }
@@ -60,14 +55,7 @@ function runCompute(state) {
   if(state.compute) {
     ContextStack.push(state);
     state.dependencies = {};
-    if(state.compute.length) {
-      function done(value) {
-        state.thing(value);
-      };
-      state.compute(done);
-    } else {
-      state.thing(state.compute());
-    }
+    state.thing(state.compute());
     ContextStack.pop();
   }
 }
@@ -77,10 +65,12 @@ function set(state, value) {
   state.value = value;
   if(!state.isEqual(old, value)) {
     dirty[state.id] = true;
-    runLeaf(Tree);
-    // this won't work with async jobs, need some book keeping...
-    // maybe because they will all at least be kicked off at this
-    // point its fine.
+    if(!running) {
+      runLeaf(Tree);
+      running = false;
+    } else {
+      runLeaf({dependencies: done});
+    }
     delete dirty[state.id];
   }
   return value;
@@ -109,7 +99,7 @@ var Computer = function(func) {
     compute: func
   };
 
-  var that = function(value) {
+  var computer = function(value) {
     if(arguments.length > 0) {
       return set(state, value);
     } else {
@@ -117,13 +107,13 @@ var Computer = function(func) {
     }
   };
 
-  that.toJSON = that;
+  computer.toJSON = computer;
 
-  state.thing = that;
+  state.thing = computer;
 
-  that.state = state;
+  computer.state = state;
 
-  that.destroy = function() {
+  computer.destroy = function() {
     state.compute = function() {};
     walkTree(Tree, function(state) {
       delete state.dependencies[that.id];
@@ -131,11 +121,14 @@ var Computer = function(func) {
   };
 
   if(!func) {
-    that(initial);
+    computer(initial);
   } else {
     runCompute(state);
   }
 
-  return that;
+  // hack
+  computer();
+
+  return computer;
 };
 

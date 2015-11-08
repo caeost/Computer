@@ -8,7 +8,8 @@ var ID = 0;
 
 // Tree is the root of all rerenders, its essentially a stripped down computer
 var Tree = {
-  dependencies: {}
+  dependencies: {},
+  id: 'Tree'
 };
 
 // dirty contains the current list of values to be recalculated
@@ -42,10 +43,11 @@ function walkTree(tree, func) {
 // later things and therefore be changed by things that were added later
 // i just realized tho that dependencies are created all the time and 
 // are not globally relevant necessarily THINK BOUT IT
-function runLeaf(tree) {
+function runLeaf(tree, dirty) {
   running = true;
   walkTree(tree, function runIfDirty(state) {
     if(intersection(dirty, state.dependencies)) {
+      console.log('computing id: ' + state.id);
       runCompute(state);
     }
   });
@@ -66,12 +68,17 @@ function set(state, value) {
   if(!state.isEqual(old, value)) {
     dirty[state.id] = true;
     if(!running) {
-      runLeaf(Tree);
+      console.log('change on id: %s', state.id);
+      runLeaf(Tree, dirty);
       running = false;
+      console.log('changes done for ids: %s', Object.keys(dirty).toString());
+      dirty = {};
     } else {
-      runLeaf({dependencies: done});
+      console.log('sub change on id: %s', state.id);
+      var newDirty = {};
+      newDirty[state.id] = true;
+      runLeaf({dependencies: done}, newDirty);
     }
-    delete dirty[state.id];
   }
   return value;
 }

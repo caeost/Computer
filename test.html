@@ -1,0 +1,59 @@
+<script src="./compute.js"></script>
+<script src="./vdom.js"></script>
+
+<div id="main"></div>
+
+<script type="text/javascript">
+  var fakeAPI = function(callback, request) {
+    setTimeout(function() { callback(extend({mock: 'data'}, request)); }, 2000);
+  };
+  
+  function extend(one, two) {
+    for(var key in two) {
+      if(two.hasOwnProperty(key)) {
+        one[key] = two[key];
+      }
+    }
+    return one;
+  }
+  
+  var Model = function(params, initial) {
+    var value = Computer(initial);
+  
+    value.fetch = function(callp) {
+      fakeAPI(function(data) {
+        value(data);
+        }, extend(callp || {}, params));
+    };
+  
+    return value;
+  }
+  
+  var model1 = Model({endpoint: 1});
+  
+  model1.fetch();
+  
+  var bootstrapped = Model({endpoint: 2}, { mock: 'old data'});
+  
+  var VDOM = 
+    DOM({
+      className: 'top'
+    }).children([
+        DOM(function() {
+          return {
+            id: 'model1-view',
+            className: model1() ? 'endpoint: ' + model1().endpoint : 'not-loaded',
+            textContent: model1() ? model1().mock : 'not loaded'
+          }
+        }),
+        DOM(function() {
+          return {
+            className: bootstrapped() ? 'endpoint: ' + bootstrapped().endpoint : 'not-loaded',
+            textContent: bootstrapped() ? bootstrapped().mock : 'not loaded'
+          }
+        })
+      ]);
+
+  var mountPoint = document.getElementById("main");
+  mountPoint.appendChild(VDOM.element);
+</script>

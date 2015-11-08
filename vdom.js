@@ -23,11 +23,11 @@ function DOM(type, func) {
   // Until (/ if) it can be cleaned up we need to do the cleanup ourselves and
   // need to know the name.
   var DOMComp = Computer(function() {
-    var data = Computer();
+    var data = computer();
 
-    extend(element, data);
-
-    return data;
+    if(data) {
+      extend(element, data);
+    }
   });
 
   // these are out here because they dont need to be used by the internal 
@@ -46,22 +46,24 @@ function DOM(type, func) {
 
     renderChildren = Computer(function() {
       var children = childComputer();
-      for(var i = 0; i < children.length; i++) {
-        var existingEl = element.childNodes[i];
-        var newEl = children[i].element;
-        if(existingEl !== newEl) {
-          if(existingEl) {
-            // this removes from rendered DOM without deleting (check this)
-            dustheap.appendChild(existingEl);
+      if(children) {
+        for(var i = 0; i < children.length; i++) {
+          var existingEl = element.childNodes[i];
+          var newEl = children[i].element;
+          if(existingEl !== newEl) {
+            if(existingEl) {
+              // this removes from rendered DOM without deleting (check this)
+              dustheap.appendChild(existingEl);
+            }
+            element.appendChild(newEl);
           }
-          element.appendChild(newEl);
         }
       }
 
       return children;
     });
 
-    return childComputer;
+    return computer;
   };
 
   var oldDestroy = computer.destroy;
@@ -71,7 +73,6 @@ function DOM(type, func) {
       renderChildren.destroy();
     }
     DOMComp.destroy();
-    computer.element.
     oldDestroy();
   }
 

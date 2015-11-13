@@ -25,25 +25,20 @@
 // ID constantly counts up, can potentially be used to know if a value could reference another
 var ID = 0;
 
-// Tree is the root of all rerenders, its essentially a stripped down computer
-var Tree = {
-  dependencies: {},
-  id: 'Tree'
-};
-
-// dirty contains the current list of values to be recalculated
-// it is cleaned up after a run through of the tree is done
-var dirty = [];
-
-var done = {};
-
-var ContextStack = [Tree];
+var ContextStack = [];
 
 function intersection(one, two) {
   for(var i = 0; i < one.length; i++) {
     if(two[one[i]]) return true;
   }
   return false;
+}
+
+function extend(target, props) {
+  for(var key in props) {
+    target[key] = props[key];
+  }
+  return target;
 }
 
 function walkTree(tree, func) {
@@ -69,30 +64,39 @@ function runLeaf(tree, dirty) {
 }
 
 function runCompute(state) {
-  if(state.compute) {
-    ContextStack.push(state);
-    state.dependencies = {};
-    state.thing(state.compute());
-    ContextStack.pop();
+  ContextStack.push(state);
+  state.thing(state.compute());
+  ContextStack.pop();
+}
+
+var running = false;
+var globalDeps = {};
+
+function isFree(val) {
+  for(var key in globalDeps) {
+    if(deps[key].dependencies[val.id]) {
+      return false;
+    }
   }
+  return true;
 }
 
 function set(state, value) {
   var old = state.value;
   state.value = value;
   if(!state.isEqual(old, value)) {
-    if(!dirty.length) {
-      dirty.push(state.id);
-      console.log('change on id: %s', state.id);
-      runLeaf(Tree, dirty);
-      console.log('changes done for ids: %s', dirty.toString());
-      dirty = [];
-      done = {};
-    } else {
-      dirty.push(state.id);
-      console.log('sub change on id: %s', state.id);
-      console.log('current done: %s', Object.keys(done).toString());
-      runLeaf({dependencies: done}, [state.id]);
+    extend(globalDeps, state.dependencies);
+    if(!running) {
+      running = true;
+      // need to loop forever while like
+      for(var key in globalDeps) {
+        // its not an array
+        var current = globalDeps[key];
+        if(!isFree(current)) continue;
+        runCompute(current);
+        delete globalDeps[current.id];
+      }
+      renning = false;
     }
   }
   return value;
@@ -100,7 +104,9 @@ function set(state, value) {
 
 function get(state) {
   var context = ContextStack[ContextStack.length - 1];
-  context.dependencies[state.id] = state;
+  if(context) {
+    state.dependencies[context.id] = context;
+  }
   return state.value;
 }
 

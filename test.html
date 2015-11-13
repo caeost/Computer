@@ -34,25 +34,36 @@
   model1.fetch();
   
   var bootstrapped = Model({endpoint: 2}, { mock: 'old data'});
+
+  var sorter = Computer();
+  sorter(function(a, b) {
+    return a.num - b.num;
+  });
   
   var VDOM = 
     DOM({
       className: 'top'
-    }).children([
-        DOM(function() {
-          return {
-            id: 'model1-view',
-            className: model1() ? 'endpoint: ' + model1().endpoint : 'not-loaded',
-            textContent: model1() ? model1().mock : 'not loaded'
-          }
-        }),
-        DOM(function() {
-          return {
-            className: bootstrapped() ? 'endpoint: ' + bootstrapped().endpoint : 'not-loaded',
-            textContent: bootstrapped() ? bootstrapped().mock : 'not loaded'
-          }
-        })
-      ]);
+    }).children(function() {
+      var arr = [
+          DOM(function() {
+            return {
+              num: 1,
+              id: 'model1-view',
+              className: model1() ? 'endpoint: ' + model1().endpoint : 'not-loaded',
+              textContent: model1() ? model1().mock : 'not loaded'
+            }
+          }),
+          DOM(function() {
+            return {
+              num: 2,
+              className: bootstrapped() ? 'endpoint: ' + bootstrapped().endpoint : 'not-loaded',
+              textContent: bootstrapped() ? bootstrapped().mock : 'not loaded'
+            }
+          })
+        ];
+      
+      return arr.sort(sorter());
+      });
 
   var mountPoint = document.getElementById("main");
   mountPoint.appendChild(VDOM.element);

@@ -1,10 +1,40 @@
+// should reuse existing elements that have been dumped here instead of creating new elements
 var dustheap = document.createElement('div');
+var types = {};
 
 function extend(target, props) {
   for(var key in props) {
     target[key] = props[key];
   }
   return target;
+}
+
+var renderChildren = function(element, parental, children) {
+  for(var i = 0; i < children.length; i++) {
+    // we don't have to depend on the value of the element, just that it is there
+    var newEl = children[i].element;
+    var old = parental.childNodes[i];
+    if(old) {
+      var existingEl = old.element;
+      if(newEl !== existingEl) {
+        element.replaceChild(newEl, existingEl);
+      }
+    } else {
+      element.appendChild(newEl);
+    }
+  }
+  // remove extras
+  while(i++ < element.childNodes.length) {
+    dustheap.appendChild(element.childNodes[i]);
+  }
+};
+
+function getElement(type) {
+  if(types[type] && types[type].length) {
+    return types[type].pop();
+  } else {
+    return document.createElement(type);
+  }
 }
 
 // type cant be changed after the fact and we only want one element per DOM call
@@ -14,14 +44,11 @@ function DOM(type, func) {
     type = 'div';
   }
 
-  var computer = Computer(func || {});
+  var computer = Computer(func);
+  computer.childNodes = [];
 
-  var element = computer.element = document.createElement(type);
+  var element = computer.element = getElement(type);
 
-  // this pattern of wrapping the function call in another computer turns out
-  // to be very useful.
-  // Until (/ if) it can be cleaned up we need to do the cleanup ourselves and
-  // need to know the name.
   var DOMComp = Computer(function() {
     var data = computer();
 
@@ -30,51 +57,19 @@ function DOM(type, func) {
     }
   });
 
-  // these are out here because they dont need to be used by the internal 
-  // behavior much and therefore their higher reference cost don't matter
-  // much.
-  // Instead we want a reliable way to reference and delete them.
-  var childComputer;
-  var renderChildren;
   computer.children = function(children) {
-    if(childComputer) {
-      childComputer.destroy();
-      renderChildren.destroy();
-    }
+    var childComputer = Computer(children);
 
-    childComputer = Computer(children);
+    Computer(function() {
+      var created = childComputer();
 
-    renderChildren = Computer(function() {
-      var children = childComputer();
-      if(children) {
-        for(var i = 0; i < children.length; i++) {
-          var existingEl = element.childNodes[i];
-          var newEl = children[i].element;
-          if(existingEl !== newEl) {
-            if(existingEl) {
-              // this removes from rendered DOM without deleting (check this)
-              dustheap.appendChild(existingEl);
-            }
-            element.appendChild(newEl);
-          }
-        }
-      }
+      renderChildren(element, computer, created);
 
-      return children;
+      computer.childNodes = created;
     });
-
+    
     return computer;
   };
-
-  var oldDestroy = computer.destroy;
-  computer.destroy = function() {
-    if(childComputer) {
-      childComputer.destroy();
-      renderChildren.destroy();
-    }
-    DOMComp.destroy();
-    oldDestroy();
-  }
 
   return computer;
 };

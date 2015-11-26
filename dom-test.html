@@ -1,0 +1,60 @@
+<script src="./compute.js"></script>
+<script src="./vdom.js"></script>
+
+<div id="main"></div>
+
+<script type="text/javascript">
+  function extend(one, two) {
+    for(var key in two) {
+      if(two.hasOwnProperty(key)) {
+        one[key] = two[key];
+      }
+    }
+    return one;
+  }
+  
+  var sorter = Computer();
+  sorter(function(a, b) {
+    return a.num - b.num;
+  });
+
+  function makeTodo(state, desc) {
+    return {
+      done: Computer(state || false),
+      description: Computer(desc || "")
+    }
+  }
+
+  var todos = Computer([makeTodo(false, "not"), makeTodo(true, "yess")]);
+
+  var makeLine = function(line) {
+    return DOM({ 
+        className: 'line'
+        }).children([
+          DOM("input", function() { 
+            return {
+              type: "checkbox",
+              className: "isDone",
+              checked: line.done()
+            }
+          }),
+          DOM(function() {
+            return {
+              className: "description",
+              textContent: line.description()
+            }
+          })
+        ]);
+  }
+  
+  var VDOM = 
+    DOM({
+      className: 'top'
+    }).children(function() {
+      var todo = todos();
+      var els = todo.map(makeLine);
+      return els.sort(sorter());
+    });
+
+  document.getElementById("main").appendChild(VDOM.element);
+</script>

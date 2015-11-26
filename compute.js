@@ -1,17 +1,6 @@
-// Realization: IF we keep track of just who depends on the object then we can make a big list and simply 
-// start running through it, along the way as we 'get' other computes if those are in the list and therefore
-// 'dirty' dependencies, we can simply run their compute first as it is all sync. This would eliminate accidental
-// cycling of computes where more then one compute depends on a changed value and at least one of those computes
-// also depends on another one in that set. This way we also dont need to trace out the dependency graph, the 
-// running of the function does it for us. We could go even further with laziness and only recompute dirty values
-// when something 'get's them, but that seems less useful in the context of web development where you often want
-// side effects / want to inform what are effectively listeners.
-
 // ideas: 
 // 1) add robust set (of compilable away) of debugging tools to see ex: size of trees, timing, cyclical re calls
-
-
-// ID constantly counts up, can potentially be used to know if a value could reference another
+// 2) ID constantly counts up, can potentially be used to know if a value could reference another
 
 function extend(target, props) {
   for(var key in props) {
@@ -83,7 +72,7 @@ var Computer = function(func) {
 
   inner = inner.bind(inner);
 
-  if(func) {
+  if(typeof func === "function") {
     inner.compute = function() {
       ContextStack.push(this);
       delete cloud[this.id];
@@ -93,9 +82,13 @@ var Computer = function(func) {
 
     inner.compute = inner.compute.bind(inner);
     inner.compute();
+  } else {
+    inner(func);
   }
 
   return inner;
 };
 
-module.exports = Computer;
+if(typeof module === "object") {
+  module.exports = Computer;
+}

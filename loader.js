@@ -10,7 +10,7 @@ var registry = {};
 function fetch(name) {
   log(`begin fetch: ${name}`);
   fs.readFile('./loader-tests/' + name + '.js', 'utf8', function(err, code) {
-    log(`evaluate: ${name}`);
+    log(`evaluate: ${name}: ${code}`);
     vm.runInNewContext(code, {
       define: define,
       demand: demand
@@ -22,7 +22,19 @@ function isArray(thing) {
   return typeof thing === 'object' && thing.length;
 }
 
-function demand(name) {
+var g = 0;
+function uniqueId() {
+  return 'demand' + g++;
+}
+
+function demand(name, fun) {
+  if(fun) {
+    if(!isArray(name)) {
+      name = [name];
+    }
+    return define(uniqueId(), name, fun);
+  }
+
   if(isArray(name)) {
     var computes = [];
     for(var l = 0; l < name.length; l++) {
@@ -63,13 +75,12 @@ function define(name, deps, fun) {
   }
 
   var context = this;
-  return compute(function() {
+  compute(function() {
     var depValuez = [];
     log(`checking deps: ${JSON.stringify(deps)} for module ${name}`);
     for(var x = 0; x < deps.length; x++) {
       log(`check dep: ${deps[x]}`);
-      var depRegis = registry[deps[x]];
-      var depValue = depRegis();
+      var depValue = registry[deps[x]]();
       if(depValue === void 0) {
         log(`module ${name} cannot finish loading yet still waiting on ${deps[x]}`);
         return void 0;
@@ -79,8 +90,10 @@ function define(name, deps, fun) {
     }
     var valuez = fun.apply(context, depValuez);
     log(`produce value ${valuez} for ${name}`);
-    return registry[name](valuez);
+    registry[name](valuez);
   });
+
+  return registry[name];
 }
 
 module.exports = {

@@ -48,7 +48,7 @@ var Computer = function(func) {
           running = true;
           var val;
           while(val = objPop(cloud)) {
-            val.compute();
+            val.inner.compute();
           }
           running = false;
         }
@@ -66,21 +66,23 @@ var Computer = function(func) {
     return this.value;
   };
 
-  inner.id = ID++;
-  inner.dependencies = {};
-  extend(inner, proto);
+  var context = {};
+  context.id = ID++;
+  context.dependencies = {};
+  extend(context, proto);
 
-  inner = inner.bind(inner);
+  inner = inner.bind(context);
+  context.inner = inner;
 
   if(typeof func === "function") {
     inner.compute = function() {
       ContextStack.push(this);
       delete cloud[this.id];
-      inner(func());
+      this.inner(func());
       ContextStack.pop();
     };
 
-    inner.compute = inner.compute.bind(inner);
+    inner.compute = inner.compute.bind(context);
     inner.compute();
   } else {
     inner(func);

@@ -1,7 +1,8 @@
-var computer = require('./compute.js');
+var Computer = require('./compute.js');
 
-var a = computer();
-var b = computer(function() {
+// basic functionality
+var a = Computer();
+var b = Computer(function() {
   return a() * 2;
 });
 
@@ -15,11 +16,12 @@ a(3);
 console.assert(a() === 3, 'a is not 3 it is ' + a());
 console.assert(b() === 6, 'b is not 6 it is ' + b());
 
-var c = computer(function() {
+var c = Computer(function() {
   return a() + b();
 })
 
 console.assert(c() === 9, 'c is not 9 it is ' + c());
 a(0);
-console.assert(c() === 6, 'c is not 6 it is ' + c());
+console.assert(c() === 0, 'c is not 0 it is ' + c());
 
+// configuring the Computers

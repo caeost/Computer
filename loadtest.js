@@ -4,9 +4,7 @@ var define = demandLib.define;
 
 demand("c", function(c) {
   console.log(`this is c: ${c}`);
-  debugger;
-  demand('a')(10);
-  console.log(`this is a: ${demand('a')()} after`);
+  demand('b')(10);
   console.log(`this is c: ${c} after`);
 });
 

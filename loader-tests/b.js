@@ -1,1 +1,1 @@
-define("b", () => 3)
+define("b", 3)

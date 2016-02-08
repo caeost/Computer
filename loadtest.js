@@ -1,11 +1,12 @@
 var demandLib = require("./loader.js");
+var debug = require('debug')('tests:loadtest');
 var demand = demandLib.demand;
 var define = demandLib.define;
 
 demand("c", function(c) {
-  console.log(`this is c: ${c}`);
+  debug(`this is c: ${c}`);
   var b = demand('b');
-  console.log(`this is b: ${b()}`);
+  debug(`this is b: ${b()}`);
   b(10);
 });
 

@@ -2,6 +2,8 @@
 // 1) add robust set (of compilable away) of debugging tools to see ex: size of trees, timing, cyclical re calls
 // 2) ID constantly counts up, can potentially be used to know if a value could reference another
 
+var log = require('debug')('computer:main');
+
 function extend(target, props) {
   for(var key in props) {
     target[key] = props[key];
@@ -17,21 +19,23 @@ var running = false;
 var objPop = function(obj) {
   var keys = Object.keys(obj);
   if(!keys.length) return false;
-  var earliest = Math.min.apply(Math, keys);
-  return obj[earliest];
+  return Math.max.apply(Math, keys);
 }
 
 var inner = function Computer(value) {
   if(arguments.length) {
+    log(`${this.id} set ${JSON.stringify(value)}`);
     var old = this.value;
     this.value = value;
     if(!this.isEqual(value, old)) {
+      log(`${this.id} changed from ${old} => ${value} checking dependencies: ${JSON.stringify(Object.keys(this.dependencies))}`);
       extend(cloud, this.dependencies);
       if(!running) {
         running = true;
         var val;
-        while(val = objPop(cloud)) {
-          val.inner.compute();
+        while((key = objPop(cloud)) !== false) {
+          log(`${cloud[key].id} running compute`);
+          cloud[key].inner.compute();
         }
         running = false;
       }
@@ -42,6 +46,7 @@ var inner = function Computer(value) {
     }
     var context = ContextStack[ContextStack.length - 1];
     if(context) {
+      log(`${this.id} getting new dependency: ${context.id}`);
       this.dependencies[context.id] = context;
     }
   }
@@ -63,6 +68,7 @@ var Computer = function Computer(func) {
   local.context = context;
 
   if(typeof func === "function") {
+    log(`Creating listening computer with ID: ${context.id} and function: \n${func.toString()}`);
     local.compute = function() {
       ContextStack.push(this); // this is 'context'
       delete cloud[this.id];
@@ -72,6 +78,7 @@ var Computer = function Computer(func) {
 
     local.compute();
   } else {
+    log(`Creating basic computer with ID: ${context.id} and value: ${func}`);
     local(func);
   }
 

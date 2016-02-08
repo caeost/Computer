@@ -2,7 +2,7 @@ var compute = require('./compute.js');
 var vm = require('vm');
 var fs = require('fs');
 
-var log = console.log;
+var log = require('debug')('computer:loader');
 
 var registry = {};
 
@@ -96,11 +96,10 @@ function define(name, deps, fun) {
       var depValuez = [];
       log(`checking deps: ${JSON.stringify(deps)} for module ${name}`);
       for(var x = 0; x < deps.length; x++) {
-        // depValue is the result
         var depValue = registry[deps[x]]();
         if(depValue === void 0) {
           log(`module ${name} cannot finish loading yet still waiting on ${deps[x]}`);
-          return void 0;
+          return;
         }
         log(`${deps[x]} has value ${depValue}`);
         depValuez.push(depValue);

@@ -87,6 +87,7 @@ Computer.prototype = {
   }
 };
 
+// taken from backbone.js
 Computer.extend = function(protoProps, staticProps) {
   var parent = this;
   var child = function(func){ 

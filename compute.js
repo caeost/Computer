@@ -14,14 +14,11 @@ var ID = 0;
 var cloud = {};
 var running = false;
 
-var proto = {
-};
-
 var objPop = function(obj) {
-  for(var key in obj) {
-    return obj[key];
-  }
-  return false;
+  var keys = Object.keys(obj);
+  if(!keys.length) return false;
+  var earliest = Math.min.apply(Math, keys);
+  return obj[earliest];
 }
 
 var inner = function Computer(value) {
@@ -53,18 +50,21 @@ var inner = function Computer(value) {
 };
 
 // todo make this extendable 
-var Computer = function(func) {
-  var context = {};
+var Computer = function Computer(func) {
+  if(!(this instanceof Computer)) {
+    return new Computer(func);
+  }
+
+  var context = Object.create(this);
   context.id = ID++;
   context.dependencies = {};
-  extend(context, Computer.prototype);
 
   var local = context.inner = inner.bind(context);
   local.context = context;
 
   if(typeof func === "function") {
-    context.inner.compute = function() {
-      ContextStack.push(this);
+    local.compute = function() {
+      ContextStack.push(this); // this is 'context'
       delete cloud[this.id];
       this.inner(func());
       ContextStack.pop();
@@ -77,19 +77,39 @@ var Computer = function(func) {
 
   return local;
 };
+
 Computer.prototype = {
-  destroy: function destroy() {
-    this.state.compute = function() {};
-    walkTree(Tree, function(state) {
-      delete state.dependencies[that.id];
-    });
-  },
   toJSON: function toJSON() {
     return this.get();
   },
   isEqual: function(a,b) {
     return a === b;
   }
+};
+
+Computer.extend = function(protoProps, staticProps) {
+  var parent = this;
+  var child = function(func){ 
+    if(!(this instanceof child)) {
+      return new child(func);
+    } else {
+      return parent.apply(this, arguments); 
+    }
+  };
+
+  // Add static properties to the constructor function, if supplied.
+  extend(child, parent, staticProps);
+
+  // Set the prototype chain to inherit from `parent`, without calling
+  // `parent`'s constructor function and add the prototype properties.
+  child.prototype = Object.create(parent.prototype);
+  extend(child.prototype, protoProps);
+
+  // Set a convenience property in case the parent's prototype is needed
+  // later.
+  child.__super__ = parent.prototype;
+
+  return child;
 };
 
 if(typeof module === "object") {

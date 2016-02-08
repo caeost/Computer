@@ -42,7 +42,7 @@ var inner = function Computer(value) {
     }
   } else {
     if(cloud[this.id]) {
-      this.compute();
+      this.inner.compute();
     }
     var context = ContextStack[ContextStack.length - 1];
     if(context) {

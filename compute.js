@@ -1,6 +1,5 @@
 // ideas: 
-// 1) add robust set (of compilable away) of debugging tools to see ex: size of trees, timing, cyclical re calls
-// 2) ID constantly counts up, can potentially be used to know if a value could reference another
+// add robust set (of compilable away) of debugging tools to see ex: size of trees, timing, cyclical re calls
 
 var log = console.log;
 
@@ -22,7 +21,7 @@ var objPop = function(obj) {
   return Math.max.apply(Math, keys);
 }
 
-var inner = function Computer(value) {
+var inner = function Inner(value) {
   if(arguments.length) {
     log(`${this.id} set ${JSON.stringify(value)}`);
     var old = this.value;
@@ -53,31 +52,39 @@ var inner = function Computer(value) {
   return this.value;
 };
 
-// todo make this extendable 
 var Compute = function Compute(func) {
+  // allow Compute to be called not as a constructor but still construct a new object
   if(!(this instanceof Compute)) {
     return new Compute(func);
   }
 
+  // this is a little shady potentially from a performance standpoint, not sure how this binding will be treated
   var context = Object.create(this);
   context.id = ID++;
   context.dependencies = {};
 
+  // TODO clean this up if possible, a lot of stuff being bound to each other
   var local = context.inner = inner.bind(context);
   local.context = context;
 
+  // if func is a function this is a special case Compute where its defined based off of other computes
   if(typeof func === "function") {
     log(`Creating listening computer with ID: ${context.id} and function: \n${func.toString()}`);
+    // the function that will be rerun internally on change
+    // It sets itself as the context so that any Compute accesses will see this Compute as the accessor
+    // and then it runs its internal function. After that its just cleanup time!
     local.compute = function() {
       var prev = Context;
-      Context = this; // this is 'context'
+      Context = this;
       delete cloud[this.id];
       this.inner(func());
       Context = prev;
     }.bind(context);
 
+    // run initially to create initial value and set up bindings.
     local.compute();
   } else {
+    // basic compute that just holds value, but can be read from / set to adhoc by other systems
     log(`Creating basic computer with ID: ${context.id} and value: ${func}`);
     local(func);
   }

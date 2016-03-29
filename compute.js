@@ -2,7 +2,7 @@
 // 1) add robust set (of compilable away) of debugging tools to see ex: size of trees, timing, cyclical re calls
 // 2) ID constantly counts up, can potentially be used to know if a value could reference another
 
-var log = require('debug')('computer:main');
+var log = console.log;
 
 function extend(target, props) {
   for(var key in props) {
@@ -11,7 +11,7 @@ function extend(target, props) {
   return target;
 }
 
-var ContextStack = [];
+var Context = null;
 var ID = 0;
 var cloud = {};
 var running = false;
@@ -44,10 +44,9 @@ var inner = function Computer(value) {
     if(cloud[this.id]) {
       this.inner.compute();
     }
-    var context = ContextStack[ContextStack.length - 1];
-    if(context) {
-      log(`${this.id} getting new dependency: ${context.id}`);
-      this.dependencies[context.id] = context;
+    if(Context) {
+      log(`${this.id} getting new dependency: ${Context.id}`);
+      this.dependencies[Context.id] = Context;
     }
   }
 
@@ -55,9 +54,9 @@ var inner = function Computer(value) {
 };
 
 // todo make this extendable 
-var Computer = function Computer(func) {
-  if(!(this instanceof Computer)) {
-    return new Computer(func);
+var Compute = function Compute(func) {
+  if(!(this instanceof Compute)) {
+    return new Compute(func);
   }
 
   var context = Object.create(this);
@@ -70,10 +69,11 @@ var Computer = function Computer(func) {
   if(typeof func === "function") {
     log(`Creating listening computer with ID: ${context.id} and function: \n${func.toString()}`);
     local.compute = function() {
-      ContextStack.push(this); // this is 'context'
+      var prev = Context;
+      Context = this; // this is 'context'
       delete cloud[this.id];
       this.inner(func());
-      ContextStack.pop();
+      Context = prev;
     }.bind(context);
 
     local.compute();
@@ -85,7 +85,7 @@ var Computer = function Computer(func) {
   return local;
 };
 
-Computer.prototype = {
+Compute.prototype = {
   toJSON: function toJSON() {
     return this.get();
   },
@@ -95,7 +95,7 @@ Computer.prototype = {
 };
 
 // taken from backbone.js
-Computer.extend = function(protoProps, staticProps) {
+Compute.extend = function(protoProps, staticProps) {
   var parent = this;
   var child = function(func){ 
     if(!(this instanceof child)) {
@@ -121,5 +121,5 @@ Computer.extend = function(protoProps, staticProps) {
 };
 
 if(typeof module === "object") {
-  module.exports = Computer;
+  module.exports = Compute;
 }

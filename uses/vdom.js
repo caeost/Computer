@@ -3,17 +3,18 @@ var dustheap = document.createElement('div');
 var types = {};
 
 function extend(target, props) {
+  if(!props) return target;
   for(var key in props) {
     target[key] = props[key];
   }
   return target;
 }
 
-var renderChildren = function(element, parental, children) {
+function renderChildren(element, parental, children) {
   for(var i = 0; i < children.length; i++) {
     // we don't have to depend on the value of the element, just that it is there
     var newEl = children[i].element;
-    var old = parental.childNodes[i];
+    var old = parental._childNodes[i];
     if(old) {
       var existingEl = old.element;
       if(newEl !== existingEl) {
@@ -23,9 +24,11 @@ var renderChildren = function(element, parental, children) {
       element.appendChild(newEl);
     }
   }
-  // remove extras
+  // remove extras, should probably sever the connection between the valueHolder and the element..
   while(i++ < element.childNodes.length) {
-    dustheap.appendChild(element.childNodes[i]);
+    var rem = element.childNodes[i];
+    types[rem.tagName] = (types[rem.tagName] || []).concat(rem);
+    dustheap.appendChild(rem);
   }
 };
 
@@ -37,6 +40,19 @@ function getElement(type) {
   }
 }
 
+var props = Object.keys(Element.prototype);
+// could make this create these Computers lazily if we use getters ?
+// this is only one way so far
+function attachPropertyManagers(computer) {
+  props.forEach(function(prop) {
+    computer[prop] = Computer(function() {
+      return computer()[prop];
+    });
+  });
+
+  return computer;
+}
+
 // type cant be changed after the fact and we only want one element per DOM call
 function DOM(type, func) {
   if(typeof type !== 'string') {
@@ -44,32 +60,31 @@ function DOM(type, func) {
     type = 'div';
   }
 
-  var computer = Computer(func);
-  computer.childNodes = [];
+  var valueHolder = Computer(func);
+  valueHolder._childNodes = [];
 
-  var element = computer.element = getElement(type);
+  valueHolder.element = getElement(type);
 
   var DOMComp = Computer(function() {
-    var data = computer();
-
-    if(data) {
-      extend(element, data);
-    }
+    extend(valueHolder.element, valueHolder());
   });
 
-  computer.children = function(children) {
+  attachPropertyManagers(valueHolder);
+
+  valueHolder.children = function(children) {
     var childComputer = Computer(children);
 
+    // how is this all going to be garbage collected?
     Computer(function() {
       var created = childComputer();
 
-      renderChildren(element, computer, created);
+      renderChildren(element, valueHolder, created);
 
-      computer.childNodes = created;
+      valueHolder._childNodes = created;
     });
     
-    return computer;
+    return valueHolder;
   };
 
-  return computer;
+  return valueHolder;
 };

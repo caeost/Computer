@@ -19,24 +19,25 @@ var ID = 0;
 var cloud = {};
 var running = false;
 
-function Get(context) {
+function Get(rep) {
   if(cloud[this.id]) {
-    context.checker();
+    rep.checker();
   }
   if(Context) {
-    this.deps[Context.id] = Context;
+    rep.deps[Context.id] = Context;
   }
   return rep.value
 }
 
-function Set(context, value, options) {
+function Set(rep, value, options) {
   // assert may want to throw an error on bad values (at least in some environments) but compute doesn't decide that
   if (options.assert && !options.assert(value)) {
     return false;
   }
-
-  if ((!options.isEqual || !options.isEqual(value, context.value)) || value != context.value) {
-    extend(cloud, context.deps);
+  var equals = (options.isEqual && options.isEqual(value, rep.value)) || value == rep.value;
+  rep.value = value;
+  if (!equals) {
+    extend(cloud, rep.deps);
     if(!running) {
       running = true;
       var val;
@@ -46,7 +47,6 @@ function Set(context, value, options) {
       running = false;
     }
   }
-  rep.value = value;
 }
 
 // runner can either be null or a sync function
@@ -54,6 +54,7 @@ function Set(context, value, options) {
 //   - isEqual(a,b) which can determine custom equality
 //   - assert(a) which gates setting values to a custom check
 function Compute(runner, options) {
+  options = options || {}
   var rep = {
     value: null,
     id: ID++,
@@ -79,4 +80,8 @@ function Compute(runner, options) {
       return Get(rep);
     }
   }
+}
+
+if (module != null && module.exports != null) {
+  module.exports = Compute
 }

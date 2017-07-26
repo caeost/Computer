@@ -10,15 +10,15 @@ var registry = {};
 // should probably also allow mapping of other things such as headers, accept-type etc.
 function normalizeName(name) {
   if(options.paths) {
-    var possibilities = {}
+    var possibilities = []
     for (var path in paths) {
       if(name.startsWith(path)) {
         possibilities.push(path);
       }
     }
 
-    var longestMatchingPath = Math.max.apply(Math, Object.keys(possibilities));
-    var longestMatching = possibilities[longestMatchingPath];
+    var longestMatchingIndex = Math.max.apply(Math, possibilities.map(function(x) {return x.length}));
+    var longestMatching = possibilities[longestMatchingIndex];
     name = longestMatching + name.slice(longestMatchingPath);
   }
   if(options.baseURL) {
@@ -84,10 +84,7 @@ function demand(name, fun) {
     // if fetch is synchronous it will return a value which we can immediatly use, else this will be
     // undefined. fetch() should not return anything unless it is the value of the module
     var val = fetch(name);
-    registry[name] = compute(val);
-    if(val) {
-      
-    }
+    registry[name] = compute()(val);
     return registry[name];
   }
 }
@@ -144,10 +141,10 @@ function define(name, deps, fun) {
       // this compute runs on any change in dependencies and will define/update this module if
       // all depended on modules have some value 
       module = createModule(name, deps, fun, this);
-      } else {
-      module = compute(fun);
+    } else {
+      module = compute()(fun);
     }
-    
+
     registry[name] = module;
   }
 

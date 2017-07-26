@@ -1,4 +1,4 @@
-var demandLib = require("./loader.js");
+var demandLib = require("../uses/demand.js");
 var debug = require('debug')('tests:loadtest');
 var demand = demandLib.demand;
 var define = demandLib.define;

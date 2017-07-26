@@ -1,4 +1,4 @@
-var compute = require('./compute.js');
+var compute = require('../compute.js');
 var vm = require('vm');
 var fs = require('fs');
 
@@ -94,7 +94,7 @@ function demand(name, fun) {
 
 function createModule(name, deps, fun, context) {
   return compute(function() {
-      if(!registry[name].loaded) {
+      if(!registry[name] || !registry[name].loaded) {
         return;
       }
       var depValuez = [];
